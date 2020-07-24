@@ -5,7 +5,6 @@ package flag
 
 import (
 	"bytes"
-	. "flag"
 	"fmt"
 	"io"
 	"io/ioutil"
