@@ -328,6 +328,7 @@ type FlagSet struct {
 
 	name          string
 	parsed        bool
+	sort          bool // sort flags or not
 	actual        map[string]*Flag
 	formal        map[string]*Flag
 	args          []string // arguments after flags
@@ -337,6 +338,7 @@ type FlagSet struct {
 
 // A Flag represents the state of a flag.
 type Flag struct {
+	ID       int    // parse index
 	Name     string // name as it appears on command line
 	Usage    string // help message
 	Value    Value  // value as set
@@ -344,16 +346,24 @@ type Flag struct {
 }
 
 // sortFlags returns the flags as a slice in lexicographical sorted order.
-func sortFlags(flags map[string]*Flag) []*Flag {
+func sortFlags(flags map[string]*Flag, sf bool) []*Flag {
 	result := make([]*Flag, len(flags))
 	i := 0
 	for _, f := range flags {
 		result[i] = f
 		i++
 	}
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].Name < result[j].Name
-	})
+
+	if sf {
+		sort.Slice(result, func(i, j int) bool {
+			return result[i].Name < result[j].Name
+		})
+	} else {
+		sort.Slice(result, func(i, j int) bool {
+			return result[i].ID < result[j].ID
+		})
+	}
+
 	return result
 }
 
@@ -385,7 +395,7 @@ func (f *FlagSet) SetOutput(output io.Writer) {
 // VisitAll visits the flags in lexicographical order, calling fn for each.
 // It visits all flags, even those not set.
 func (f *FlagSet) VisitAll(fn func(*Flag)) {
-	for _, flag := range sortFlags(f.formal) {
+	for _, flag := range sortFlags(f.formal, f.sort) {
 		fn(flag)
 	}
 }
@@ -399,7 +409,7 @@ func VisitAll(fn func(*Flag)) {
 // Visit visits the flags in lexicographical order, calling fn for each.
 // It visits only those flags that have been set.
 func (f *FlagSet) Visit(fn func(*Flag)) {
-	for _, flag := range sortFlags(f.actual) {
+	for _, flag := range sortFlags(f.actual, f.sort) {
 		fn(flag)
 	}
 }
@@ -582,6 +592,11 @@ func (f *FlagSet) defaultUsage() {
 var Usage = func() {
 	fmt.Fprintf(CommandLine.Output(), "Usage of %s:\n", os.Args[0])
 	PrintDefaults()
+}
+
+// SetSortFlags sort flags or not
+func SetSortFlags(v bool) {
+	CommandLine.sort = v
 }
 
 // NFlag returns the number of flags that have been set.
@@ -839,7 +854,7 @@ func Duration(name string, value time.Duration, usage string) *time.Duration {
 // decompose the comma-separated string into the slice.
 func (f *FlagSet) Var(value Value, name string, usage string) {
 	// Remember the default value as a string; it won't change.
-	flag := &Flag{name, usage, value, value.String()}
+	flag := &Flag{Name: name, Usage: usage, Value: value, DefValue: value.String()}
 	_, alreadythere := f.formal[name]
 	if alreadythere {
 		var msg string
@@ -854,6 +869,7 @@ func (f *FlagSet) Var(value Value, name string, usage string) {
 	if f.formal == nil {
 		f.formal = make(map[string]*Flag)
 	}
+	flag.ID = len(f.formal)
 	f.formal[name] = flag
 }
 
@@ -1031,6 +1047,7 @@ func NewFlagSet(name string, errorHandling ErrorHandling) *FlagSet {
 		errorHandling: errorHandling,
 	}
 	f.Usage = f.defaultUsage
+	f.sort = true
 	return f
 }
 
