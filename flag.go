@@ -493,7 +493,7 @@ func UnquoteUsage(flag *Flag) (name string, usage string) {
 	name = "value"
 	switch flag.Value.(type) {
 	case boolFlag:
-		name = ""
+		name = "bool"
 	case *durationValue:
 		name = "duration"
 	case *float64Value:
@@ -525,7 +525,7 @@ func (f *FlagSet) PrintDefaults() {
 		} else {
 			// Four spaces before the tab triggers good alignment
 			// for both 4- and 8-space tab stops.
-			s += "\n    \t"
+			s += "\t"
 		}
 		s += strings.ReplaceAll(usage, "\n", "\n    \t")
 
